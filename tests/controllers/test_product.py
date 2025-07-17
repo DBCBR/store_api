@@ -9,22 +9,22 @@ async def test_controller_create_should_return_success(test_client, products_url
     response = await test_client.post(products_url, json=product_data())
 
     content = response.json()
-    
+
     # Debug: imprimir resposta em caso de erro
     if response.status_code != status.HTTP_201_CREATED:
         print(f"Status: {response.status_code}")
         print(f"Content: {content}")
-    
+
     # Verificar se a resposta tem status correto
     assert response.status_code == status.HTTP_201_CREATED
-    
+
     # Verificar se os campos obrigatórios estão presentes
     assert "id" in content
-    assert "name" in content  
+    assert "name" in content
     assert "quantity" in content
     assert "price" in content
     assert "status" in content
-    
+
     # Verificar valores específicos
     assert content["name"] == "Iphone 14 Pro Max"
     assert content["quantity"] == 10

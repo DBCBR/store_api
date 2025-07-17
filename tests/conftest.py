@@ -27,13 +27,13 @@ def mongo_client():
 @pytest.fixture
 async def product_usecase(mongo_client):
     from store.usecases.product import ProductUsecase
-    
+
     # Create a new instance with the mock client
     usecase = ProductUsecase()
     usecase.client = mongo_client
     usecase.database = mongo_client.get_database("test")
     usecase.collection = usecase.database.get_collection("products")
-    
+
     return usecase
 
 
@@ -41,7 +41,7 @@ async def product_usecase(mongo_client):
 async def test_client():
     """Create an async test client"""
     from store.main import app
-    
+
     async with AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://testserver"
@@ -52,7 +52,7 @@ async def test_client():
 @pytest.fixture(autouse=True)
 async def clear_collections(mongo_client):
     yield
-    
+
     # Clear all collections after each test
     database = mongo_client.get_database("test")
     try:

@@ -21,20 +21,23 @@ class ProductUsecase:
             return ProductOut(**product_model.model_dump())
         except Exception as e:
             from store.core.exceptions import InsertionException
-            raise InsertionException(message=f"Error inserting product: {str(e)}")
+            raise InsertionException(
+                message=f"Error inserting product: {str(e)}")
 
     async def get(self, id: UUID) -> ProductOut:
-        result = await self.collection.find_one({"id": str(id)})  # Converter UUID para string
+        # Converter UUID para string
+        result = await self.collection.find_one({"id": str(id)})
 
         if not result:
-            raise NotFoundException(message=f"Product not found with filter: {id}")
+            raise NotFoundException(
+                message=f"Product not found with filter: {id}")
 
         return ProductOut(**result)
 
     async def query(self, filters: ProductFilter = None) -> List[ProductOut]:
         """Query products with optional price filters"""
         query_filter = {}
-        
+
         if filters:
             if filters.min_price is not None or filters.max_price is not None:
                 price_filter = {}
@@ -45,33 +48,37 @@ class ProductUsecase:
                     # Converter Decimal para float para comparação no MongoDB
                     price_filter["$lte"] = float(filters.max_price)
                 query_filter["price"] = price_filter
-        
+
         return [ProductOut(**item) async for item in self.collection.find(query_filter)]
 
     async def update(self, id: UUID, body: ProductUpdate) -> ProductUpdateOut:
         from datetime import datetime, timezone
-        
+
         # Adicionar updated_at ao body
         update_data = body.model_dump(exclude_none=True)
         update_data["updated_at"] = datetime.now(timezone.utc)
-        
+
         result = await self.collection.find_one_and_update(
             filter={"id": str(id)},  # Converter UUID para string
             update={"$set": update_data},
             return_document=pymongo.ReturnDocument.AFTER,
         )
-        
+
         if not result:
-            raise NotFoundException(message=f"Product not found with filter: {id}")
+            raise NotFoundException(
+                message=f"Product not found with filter: {id}")
 
         return ProductUpdateOut(**result)
 
     async def delete(self, id: UUID) -> bool:
-        product = await self.collection.find_one({"id": str(id)})  # Converter UUID para string
+        # Converter UUID para string
+        product = await self.collection.find_one({"id": str(id)})
         if not product:
-            raise NotFoundException(message=f"Product not found with filter: {id}")
+            raise NotFoundException(
+                message=f"Product not found with filter: {id}")
 
-        result = await self.collection.delete_one({"id": str(id)})  # Converter UUID para string
+        # Converter UUID para string
+        result = await self.collection.delete_one({"id": str(id)})
 
         return True if result.deleted_count > 0 else False
 

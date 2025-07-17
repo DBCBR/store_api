@@ -1,12 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from bson import Decimal128
-from pydantic import UUID4, BaseModel, Field, model_validator
+from pydantic import UUID4, BaseModel, Field, model_validator, ConfigDict
 
 
 class BaseSchemaMixin(BaseModel):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OutSchema(BaseModel):
@@ -19,5 +18,9 @@ class OutSchema(BaseModel):
         for key, value in data.items():
             if isinstance(value, Decimal128):
                 data[key] = Decimal(str(value))
+            elif key in ['created_at', 'updated_at'] and isinstance(value, datetime):
+                # Garantir que datetime seja timezone-aware
+                if value.tzinfo is None:
+                    data[key] = value.replace(tzinfo=timezone.utc)
 
         return data

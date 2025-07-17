@@ -1,43 +1,69 @@
 import pytest
 import asyncio
+import httpx
+import mongomock_motor
 
 from uuid import UUID
-from store.db.mongo import db_client
 from store.schemas.product import ProductIn, ProductUpdate
-from store.usecases.product import product_usecase
 from tests.factories import product_data, products_data
 from httpx import AsyncClient
 
 
 @pytest.fixture(scope="session")
 def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """Create an instance of the default event loop for the test session."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
 
 @pytest.fixture
 def mongo_client():
-    return db_client.get()
+    # Use mongomock for testing instead of real MongoDB
+    return mongomock_motor.AsyncMongoMockClient()
+
+
+@pytest.fixture
+async def product_usecase(mongo_client):
+    from store.usecases.product import ProductUsecase
+    
+    # Create a new instance with the mock client
+    usecase = ProductUsecase()
+    usecase.client = mongo_client
+    usecase.database = mongo_client.get_database("test")
+    usecase.collection = usecase.database.get_collection("products")
+    
+    return usecase
+
+
+@pytest.fixture
+async def test_client():
+    """Create an async test client"""
+    from store.main import app
+    
+    async with AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://testserver"
+    ) as ac:
+        yield ac
 
 
 @pytest.fixture(autouse=True)
 async def clear_collections(mongo_client):
     yield
-    collection_names = await mongo_client.get_database().list_collection_names()
-    for collection_name in collection_names:
-        if collection_name.startswith("system"):
-            continue
-
-        await mongo_client.get_database()[collection_name].delete_many({})
-
-
-@pytest.fixture
-async def client() -> AsyncClient:
-    from store.main import app
-
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
+    
+    # Clear all collections after each test
+    database = mongo_client.get_database("test")
+    try:
+        collection_names = await database.list_collection_names()
+        for collection_name in collection_names:
+            if collection_name.startswith("system"):
+                continue
+            await database[collection_name].delete_many({})
+    except Exception:
+        # In case of mongomock limitations
+        pass
 
 
 @pytest.fixture
@@ -61,7 +87,7 @@ def product_up(product_id):
 
 
 @pytest.fixture
-async def product_inserted(product_in):
+async def product_inserted(product_in, product_usecase):
     return await product_usecase.create(body=product_in)
 
 
@@ -71,5 +97,5 @@ def products_in():
 
 
 @pytest.fixture
-async def products_inserted(products_in):
+async def products_inserted(products_in, product_usecase):
     return [await product_usecase.create(body=product_in) for product_in in products_in]

@@ -35,3 +35,9 @@ class ProductUpdate(BaseSchemaMixin):
 
 class ProductUpdateOut(ProductOut):
     ...
+
+
+class ProductFilter(BaseSchemaMixin):
+    """Schema para filtros de produtos"""
+    min_price: Optional[Decimal] = Field(None, description="Preço mínimo", ge=0)
+    max_price: Optional[Decimal] = Field(None, description="Preço máximo", ge=0)
